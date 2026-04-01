@@ -3,27 +3,24 @@ import express from 'express';
 import cors from 'cors';
 import { db } from './lib/db';
 
-import highscoresRouter from './routes/highscores';
-import collectionRouter from './routes/collection';
-import gameRouter from './routes/game';
+import restaurantsRouter, { seedDatabase } from './routes/restaurants';
+import menuItemsRouter from './routes/menuItems';
+import cartRouter from './routes/cart';
+import ordersRouter from './routes/orders';
 
-// ── Environment validation ──
 const isProd = process.env.PROD === 'true';
-const hasMongoUri = !!process.env.MONGODB_URI;
 console.log('[server] Environment:');
-console.log('  PROD:', isProd ? '✓ true' : '✗ false (using in-memory storage)');
-console.log('  MONGODB_URI:', hasMongoUri ? '✓ configured' : '✗ not set');
-if (isProd && !hasMongoUri) {
-  console.warn('[server] ⚠ PROD=true but MONGODB_URI is not set — falling back to in-memory storage!');
+console.log('  PROD:', isProd ? '✓ true' : '✗ false (in-memory storage)');
+console.log('  MONGODB_URI:', process.env.MONGODB_URI ? '✓ configured' : '✗ not set');
+if (isProd && !process.env.MONGODB_URI) {
+  console.warn('[server] ⚠ PROD=true but MONGODB_URI not set — falling back to in-memory!');
 }
 
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3001;
-
 app.use(cors({ origin: '*' }));
 app.use(express.json());
 
-// ── Request logging ──
 app.use((req, res, next) => {
   const start = Date.now();
   res.on('finish', () => {
@@ -32,25 +29,29 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', db: db.isProduction() ? 'mongodb' : 'in-memory' });
 });
 
-// --- API routes ---
-app.use('/api/highscores', highscoresRouter);
-app.use('/api/collection', collectionRouter);
-app.use('/api/game', gameRouter);
+app.use('/api/restaurants', restaurantsRouter);
+app.use('/api/menu-items', menuItemsRouter);
+app.use('/api/cart', cartRouter);
+app.use('/api/orders', ordersRouter);
 
-// ── Error handler ──
 app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('[server] Error:', err.message);
   res.status(500).json({ error: 'Internal server error' });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`[server] API server running on http://localhost:${PORT}`);
   console.log(`[server] DB mode: ${db.isProduction() ? 'MongoDB' : 'In-memory'}`);
+  
+  // Seed database
+  try {
+    await seedDatabase();
+    console.log('[server] Database seeded successfully.');
+  } catch (err) {
+    console.error('[server] Failed to seed database:', err);
+  }
 });
-
-export { app, db };

@@ -1,37 +1,51 @@
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import {Zap, Heart, Star, Ship} from "lucide-react";
-import { useGameStore } from "@/store/gameStore";
+import React, { useMemo } from 'react';
+import Header from '@/components/Header';
+import SearchBar from '@/components/SearchBar';
+import RestaurantCard from '@/components/RestaurantCard';
+import { useRestaurantStore } from '@/store/restaurantStore';
 
 export default function HomePage() {
-  const navigate = useNavigate();
-  const startGame = useGameStore((s) => s.startGame);
+  const searchQuery = useRestaurantStore((state) => state.searchQuery);
+  const allRestaurants = useRestaurantStore((state) => state.restaurants);
+  const getFilteredRestaurants = useRestaurantStore((state) => state.getFilteredRestaurants);
 
-  async function handleStartFishing() {
-    await startGame();
-    navigate("/play");
-  }
+  // Using useMemo to prevent infinite renders while remaining reactive to store updates
+  const restaurants = useMemo(
+    () => getFilteredRestaurants(),
+    [searchQuery, allRestaurants, getFilteredRestaurants]
+  );
 
   return (
-    <main className="flex flex-1 flex-col items-center justify-center px-4 py-12 bg-gradient-to-b from-blue-100 to-blue-50 min-h-[calc(100vh-4rem)]">
-      <section className="w-full max-w-xl bg-card rounded-2xl shadow-md px-8 py-10 flex flex-col items-center text-center border border-border">
-        <Ship className="size-14 md:size-20 text-blue-400 mb-4 animate-bounce" aria-hidden />
-        <h1 className="text-3xl md:text-4xl font-extrabold text-primary mb-3 tracking-tight drop-shadow">Baby Fishing Adventures!</h1>
-        <p className="text-lg md:text-xl text-muted-foreground mb-7 max-w-md">
-          Cast your line, collect cute fish, and aim for a fishing high score! Safe, fun, and simple for everyone.
-        </p>
-        <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
-          <Button onClick={handleStartFishing} className="w-full sm:w-auto" size="lg">
-            <Zap className="mr-2 size-5" /> Start Fishing
-          </Button>
-          <Button onClick={() => navigate("/collection") } variant="outline" className="w-full sm:w-auto" size="lg">
-            <Heart className="mr-2 size-5" /> View Collection
-          </Button>
-          <Button onClick={() => navigate("/highscores")} variant="secondary" className="w-full sm:w-auto" size="lg">
-            <Star className="mr-2 size-5" /> High Scores
-          </Button>
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="container mx-auto px-4 py-8 md:px-6">
+        <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-foreground">
+              Discover Restaurants
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Find your favorite food and get it delivered.
+            </p>
+          </div>
+          <div className="w-full md:w-96">
+            <SearchBar />
+          </div>
         </div>
-      </section>
-    </main>
+
+        {(!restaurants || restaurants.length === 0) ? (
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <p className="text-xl font-medium text-foreground">No restaurants found.</p>
+            <p className="text-muted-foreground mt-2">Try adjusting your search query.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {(restaurants ?? []).map((restaurant) => (
+              <RestaurantCard key={restaurant.id} restaurant={restaurant} />
+            ))}
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

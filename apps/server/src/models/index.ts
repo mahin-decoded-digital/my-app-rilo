@@ -1,3 +1,5 @@
+import { db } from '../lib/db';
+
 export interface Restaurant {
   id: string;
   name: string;
